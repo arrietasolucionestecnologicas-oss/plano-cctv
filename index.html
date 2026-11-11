@@ -216,6 +216,12 @@ var CATALOG=[
   {id:'hk-79d0t',pr:{venta:195600},brand:'Hikvision',name:'DS-2CE79D0T-VFIT3F',kind:'Torreta varifocal 2 MP',px:1920,ir:40,
    vari:{min:30,max:100,def:60,txt:'2,7 a 13,5 mm: 100° (angular) a 30° (tele)'},lenses:[],
    src:'Hoja de especificaciones de un distribuidor. El ángulo intermedio es el que eliges con el control. Ángulo vertical por confirmar: la página de Hikvision Europa para la variante (C) indica 52° (ancho) a 17° (tele), leído en el resumen de una búsqueda sin abrir la ficha; escríbelo a mano solo si lo confirmas.'},
+  {id:'dh-t1a21',pr:{venta:50400},brand:'Dahua',name:'DH-HAC-T1A21N-U',kind:'Eyeball (domo) 2 MP IR 25 m',px:1920,ir:25,
+   lenses:[{label:'2,8 mm',hfov:100,vfov:54,ficha:{D:44.7,O:17.9,R:8.9,I:4.5}},{label:'3,6 mm',hfov:80,vfov:43}],
+   src:'Ficha oficial de Dahua DH-HAC-T1A21-U, que se pide como DH-HAC-T1A21N-U (oct. 2023): IR de 25 m, 2,8 mm a 100° x 54° y 3,6 mm a 80° x 43°; distancias de ficha del lente de 2,8 mm. Una cotización anterior decía 20 m de visión nocturna (dato de otra versión de la ficha): para el -U vale 25 m. Se usó en una instalación anterior (4 unidades, lente de 2,8 mm).'},
+  {id:'hk-76d0t',pr:{venta:90000},brand:'Hikvision',name:'DS-2CE76D0T-LPFS',kind:'Torreta 2 MP luz dual',px:1920,ir:20,
+   lenses:[{label:'2,8 mm',hfov:101,vfov:56},{label:'3,6 mm',hfov:78,vfov:42}],
+   src:'Hoja oficial de Hikvision DS-2CE76D0T-LPFS (dic. 2024), leída en el resumen de una búsqueda sin abrir el PDF (devolvió error 403): 2,8 mm a 101° x 56° y 3,6 mm a 78° x 42°; IR y luz blanca de 20 m; es de interior. Se usó en una instalación anterior (3 unidades, lente de 2,8 mm).'},
   {id:'custom',brand:'Otra',name:'Personalizada',kind:'Escribe tus datos',px:1920,ir:30,lenses:[],hfovDef:90,
    src:'Datos escritos por ti.'}
 ];
@@ -226,17 +232,10 @@ var ARCHIVO=[
   {id:'dh-me1509',brand:'Dahua',name:'HAC-ME1509TH-A-PV-S2',kind:'Bala TiOC 5 MP con sirena',px:2880,ir:40,
    lenses:[{label:'3,6 mm',hfov:89,ficha:{D:78.0,O:31.2,R:15.6,I:7.8}}],
    src:'Ficha Dahua HAC-ME1509TH-A-PV-S2 (el lente de 2,8 mm no aparece en la ficha que leí).'},
-  {id:'hk-76d0t',pr:{venta:90000},brand:'Hikvision',name:'DS-2CE76D0T-LPFS',kind:'Torreta 2 MP luz dual',px:1920,ir:20,
-   lenses:[{label:'2,8 mm',hfov:101},{label:'3,6 mm',hfov:78}],
-   src:'Página de un distribuidor (no es la ficha oficial). IR y luz blanca de 20 m.'},
   {id:'dh-b1a21',brand:'Dahua',name:'DH-HAC-B1A21-U',kind:'Bala 2 MP IR 20 m',px:1920,ir:20,
    pr:{venta:52800},
    lenses:[{label:'2,8 mm',hfov:100,ficha:{D:46.9,O:18.8,R:9.4,I:4.7}},{label:'3,6 mm',hfov:82,ficha:{D:60.9,O:24.3,R:12.2,I:6.1}},{label:'6 mm',hfov:53,ficha:{D:82.8,O:33.1,R:16.6,I:8.3}}],
-   src:'Ficha Dahua DH-HAC-B1A21 (serie Cooper, copia de un distribuidor). La referencia cotizada es la -U: confirma que comparte estos datos y qué lente trae la que compras.'},
-  {id:'dh-t1a21',brand:'Dahua',name:'DH-HAC-T1A21N-U',kind:'Eyeball (domo) 2 MP IR 20 m',px:1920,ir:20,
-   pr:{venta:50400},
-   lenses:[{label:'2,8 mm',hfov:100},{label:'3,6 mm',hfov:83},{label:'6 mm',hfov:53}],
-   src:'Ficha Dahua DH-HAC-T1A21-A (variante con micrófono, serie Cooper). IR 20 m según esa ficha; otra página del modelo -U dice 25 m: confirmar. Sin distancias de ficha: la tabla de la copia leída salió ilegible.'}
+   src:'Ficha Dahua DH-HAC-B1A21 (serie Cooper, copia de un distribuidor). La referencia cotizada es la -U: confirma que comparte estos datos y qué lente trae la que compras.'}
 ];
 var CAT=function(id){var i;for(i=0;i<CATALOG.length;i++)if(CATALOG[i].id===id)return CATALOG[i];for(i=0;i<ARCHIVO.length;i++)if(ARCHIVO[i].id===id)return ARCHIVO[i];return CATALOG[CATALOG.length-1];};
 
