@@ -105,6 +105,12 @@ table.dori td{padding:5px 4px 5px 0;border-top:1px solid var(--line)}
 .modal img.prev{max-width:100%;border:1px solid var(--line);border-radius:8px;display:block}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(120px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:999px;font-size:13px;z-index:60;max-width:90%}
 .toast[hidden]{display:none}
+.uso{margin-top:10px;border-top:1px solid var(--line);padding-top:6px}
+.uso ul{margin:6px 0 0;padding-left:18px;font-size:12px;line-height:1.5;color:var(--ink)}
+.uso li{margin:3px 0}
+.seg.cols2{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.sug td{vertical-align:top}
+.sug .rec{display:inline-block;font:600 10px var(--font);letter-spacing:.05em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:1px 5px;margin-left:6px}
 /* Avisos arriba del plano (ejemplo e instalación) */
 .stack{position:absolute;left:12px;right:12px;top:10px;z-index:5;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .stack .banner{position:static;pointer-events:auto;flex-wrap:wrap}
@@ -953,6 +959,125 @@ function finish(p,cancelled){
   }
   redraw();
 }
+/* ---------- Pistas de uso y sugerencia según el tamaño del plano ---------- */
+/* Caja que contiene todas las paredes: es el «espacio» sobre el que se sugiere. */
+function planBox(){
+  if(!state.walls.length)return null;
+  var x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  state.walls.forEach(function(w){[w.a,w.b].forEach(function(p){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);});});
+  var bw=Math.max(x1-x0,0.5),bh=Math.max(y1-y0,0.5);
+  return {x0:x0,y0:y0,x1:x0+bw,y1:y0+bh,w:bw,h:bh,area:bw*bh,diag:Math.hypot(bw,bh)};
+}
+/* Pistas de uso a partir de las distancias CALCULADAS de la cámara y su lente. Los umbrales son criterio general del programa. */
+function usoHTML(c){
+  var d=LEVELS.map(function(l){return levelDist(c,l.ppm);}),k=CAT(c.cat),it=[];
+  if(d[0]>=3)it.push('<b>Puertas y accesos:</b> identifica rostros hasta '+fmt(d[0],1)+' m.');
+  else it.push('Para identificar un rostro la persona debe estar a menos de '+fmt(d[0],1)+' m: solo sirve en puntos muy cercanos.');
+  if(d[1]>=5)it.push('<b>Salones, pasillos y tiendas:</b> reconoce personas hasta '+fmt(d[1],1)+' m.');
+  else it.push('No es la mejor opción para salones grandes: reconoce personas solo hasta '+fmt(d[1],1)+' m.');
+  if(d[2]>=12)it.push('<b>Patios, parqueaderos y fachadas:</b> permite ver qué hace cada persona hasta '+fmt(d[2],1)+' m.');
+  if(d[3]>=30)it.push('<b>Áreas abiertas y perímetros:</b> detecta que hay alguien hasta '+fmt(d[3],1)+' m (no alcanza para identificar).');
+  else if(d[3]<15)it.push('No sirve para áreas abiertas grandes: detecta presencia solo hasta '+fmt(d[3],1)+' m.');
+  if(k.vari)it.push('<b>Varifocal:</b> el ángulo se ajusta a mano, útil cuando aún no sabes a qué distancia queda lo que quieres ver.');
+  else if(c.hfov>=100)it.push('<b>Gran angular ('+fmt(c.hfov,0)+'°):</b> cubre mucho ancho desde una esquina, pero las personas lejanas se ven pequeñas.');
+  else if(c.hfov<=65)it.push('<b>Ángulo cerrado ('+fmt(c.hfov,0)+'°):</b> ideal para un pasillo, portón o acceso; no para cubrir un salón completo.');
+  else it.push('<b>Ángulo medio ('+fmt(c.hfov,0)+'°):</b> equilibrio entre ancho y alcance.');
+  it.push('<b>De noche:</b> infrarrojo hasta '+fmt(c.ir,0)+' m'+(/luz dual/i.test(k.kind||'')?' y luz cálida para ver a color.':'.'));
+  if(/^bala/i.test(k.kind||''))it.push('<b>Tipo bala:</b> se nota y disuade; es la forma que más se usa en exteriores. Confirma su protección contra agua (IP) en la ficha.');
+  else if(/torreta|domo|eyeball/i.test(k.kind||''))it.push('<b>Tipo torreta o domo:</b> más discreta y compacta; revisa su protección (IP) en la ficha si va al exterior.');
+  var pb=planBox();
+  if(pb){
+    it.push('<b>En tu plano</b> ('+fmt(pb.w,1)+' × '+fmt(pb.h,1)+' m, diagonal '+fmt(pb.diag,1)+' m): '+((d[1]>=pb.diag&&c.hfov>=90)?'una sola cámara en una esquina alcanza a reconocer personas en todo el espacio, si nada tapa la vista.':'desde una esquina reconoce hasta '+fmt(d[1],1)+' m; para todo el espacio hacen falta más cámaras. Mira «Sugerencia de cámaras» en Proyecto.'));
+  }
+  return '<div class="uso"><p class="note"><b>Para qué puede servir</b> (según las distancias calculadas de este lente):</p><ul><li>'+it.join('</li><li>')+'</li></ul><p class="note">Criterio general del programa, no una promesa: confirma en campo.</p></div>';
+}
+var sugTarget=1,sugResult=null;
+function sugKey(){return JSON.stringify([state.walls.map(function(w){return [w.a.x,w.a.y,w.b.x,w.b.y];}),sugTarget,state.settings.recMode,state.settings.recPx,state.settings.night]);}
+function sugVariants(){
+  var out=[];
+  CATALOG.forEach(function(k){
+    if(k.id==='custom')return;
+    if(k.vari)[100,60,35].forEach(function(hf){out.push({k:k,lens:null,hfov:hf,label:'zoom a '+hf+'°'});});
+    else k.lenses.forEach(function(l,i){out.push({k:k,lens:i,hfov:l.hfov,label:'lente de '+l.label});});
+  });
+  return out;
+}
+/* Prueba posiciones sobre el contorno del espacio (esquinas y lados), apuntando al centro, y va sumando la cámara que más cubre
+   hasta llegar al 90 % del espacio con la calidad pedida (máximo 5 cámaras). Usa el mismo motor del plano: las paredes tapan la vista. */
+function suggest(target){
+  var pb=planBox();if(!pb)return null;
+  var step=Math.max(0.25,Math.max(pb.w,pb.h)/60),nx=Math.max(2,Math.round(pb.w/step)),ny=Math.max(2,Math.round(pb.h/step));
+  var cells=[],i,j,t;
+  for(j=0;j<ny;j++)for(i=0;i<nx;i++)cells.push([pb.x0+(i+.5)*pb.w/nx,pb.y0+(j+.5)*pb.h/ny]);
+  var cx=pb.x0+pb.w/2,cy=pb.y0+pb.h/2,ins=Math.min(0.35,pb.w/4,pb.h/4);
+  var X0=pb.x0+ins,X1=pb.x1-ins,Y0=pb.y0+ins,Y1=pb.y1-ins,pos=[];
+  for(t=0;t<=4;t++){pos.push([X0+(X1-X0)*t/4,Y0]);pos.push([X0+(X1-X0)*t/4,Y1]);}
+  for(t=1;t<=3;t++){pos.push([X0,Y0+(Y1-Y0)*t/4]);pos.push([X1,Y0+(Y1-Y0)*t/4]);}
+  var variants=sugVariants().map(function(v){
+    var k=v.k,cov=pos.map(function(p){
+      var dir=deg(Math.atan2(cy-p[1],cx-p[0]));
+      var c={id:'s',name:'S',cat:k.id,x:p[0],y:p[1],dir:dir,px:k.px,ir:k.ir,lens:v.lens,hfov:v.hfov,h:null,tilt:null,vfov:null,vfovAuto:false};
+      var m=camModel(c,4),set=new Uint8Array(cells.length),q,lv;
+      for(q=0;q<cells.length;q++){lv=cellLevel(m,cells[q][0],cells[q][1]);if(lv>=0&&lv<=target)set[q]=1;}
+      return {x:p[0],y:p[1],dir:dir,set:set};
+    });
+    var got=new Uint8Array(cells.length),picks=[],steps=[],cnt=0,n,q;
+    for(n=1;n<=5;n++){
+      var bi=-1,bg=0;
+      cov.forEach(function(c,ix){var g=0,z;for(z=0;z<cells.length;z++)if(c.set[z]&&!got[z])g++;if(g>bg){bg=g;bi=ix;}});
+      if(bi<0)break;
+      for(q=0;q<cells.length;q++)if(cov[bi].set[q])got[q]=1;
+      cnt+=bg;picks.push(cov[bi]);steps.push(cnt/cells.length);
+      if(cnt/cells.length>=0.9)break;
+    }
+    var vp=ventaDe(k),cov1=steps.length?steps[steps.length-1]:0;
+    return {k:k,lens:v.lens,hfov:v.hfov,label:v.label,n:picks.length,coverage:cov1,firstCoverage:steps.length?steps[0]:0,ok:cov1>=0.9,
+      placements:picks.map(function(p){return {x:p.x,y:p.y,dir:p.dir};}),price:vp==null?null:vp*picks.length};
+  });
+  variants.sort(function(a,b){
+    if(a.ok!==b.ok)return a.ok?-1:1;
+    if(a.ok)return (a.n-b.n)||((a.price==null?1e12:a.price)-(b.price==null?1e12:b.price));
+    return b.coverage-a.coverage;
+  });
+  return {pb:pb,target:target,grid:{x0:pb.x0,y0:pb.y0,w:pb.w,h:pb.h,nx:nx,ny:ny},variants:variants};
+}
+function runSuggest(){
+  var r=suggest(sugTarget);
+  if(!r){toast('Dibuja primero las paredes del espacio.');return;}
+  r.key=sugKey();sugResult=r;openProject();
+  var cd=$('#m-body').closest('.card'),el=$('#sug-res');if(cd&&el)cd.scrollTop=Math.max(0,el.offsetTop-12);
+}
+function placeSuggestion(ix){
+  var v=sugResult&&sugResult.variants[ix];if(!v||!v.placements.length)return;
+  pushHist();
+  v.placements.forEach(function(p){
+    var cam=makeCam(v.k.id,v.lens,Math.round(p.x*100)/100,Math.round(p.y*100)/100,Math.round(p.dir));
+    if(v.k.vari){cam.hfov=v.hfov;if(cam.vfovAuto)cam.vfov=vfovFrom(v.hfov);}
+    state.camSeq=(state.camSeq||0)+1;cam.name='C'+state.camSeq;state.cams.push(cam);
+  });
+  closeModal();sel=null;afterChange();setTool('select');
+  toast('Coloqué '+v.placements.length+(v.placements.length===1?' cámara':' cámaras')+'. Muévelas o gíralas; Deshacer las quita.',6000);
+}
+function sugHTML(){
+  var pb=planBox(),h='<h3>Sugerencia de cámaras</h3>';
+  if(!pb)return h+'<p class="note">Dibuja las paredes del espacio y aquí te sugiero qué cámaras usar y cuántas.</p>';
+  var desc=['ver con certeza quién es (rostro)','reconocer a una persona que ya conoces','ver qué hace cada persona','saber que hay alguien (presencia)'];
+  h+='<p class="note">Tu plano mide <b>'+fmt(pb.w,1)+' × '+fmt(pb.h,1)+' m</b> (unos '+fmt(pb.area,0)+' m², tomando la caja que contiene las paredes). ¿Qué calidad quieres en todo el espacio?</p>'+
+    '<div class="seg cols2" role="group" aria-label="Calidad buscada">'+LEVELS.map(function(l,i){return '<button data-sugt="'+i+'" aria-pressed="'+(sugTarget===i)+'">'+l.name+'</button>';}).join('')+'</div>'+
+    '<p class="note">'+LEVELS[sugTarget].name+': '+desc[sugTarget]+'.</p>'+
+    '<div class="row" style="margin-top:6px"><button class="btn pri" id="sug-go">Calcular sugerencia</button></div>';
+  if(sugResult&&sugResult.key===sugKey()){
+    h+='<div id="sug-res"><table class="dori sug"><tbody>';
+    sugResult.variants.slice(0,6).forEach(function(v,i){
+      var pct=Math.round(v.coverage*100),nm=v.n+' × '+esc(v.k.name)+' · '+esc(v.label);
+      h+='<tr><td>'+(v.ok?'<b>'+nm+'</b>'+(i===0?'<span class="rec">Recomendada</span>':'')+'<br><span class="note">cubren '+pct+' % del espacio'+(v.price!=null?' · '+money(v.price):'')+'</span>'
+         :nm+'<br><span class="note warn">no llega: con '+v.n+' cubre solo '+pct+' %</span>')+'</td><td><button class="btn" data-sugp="'+i+'">Colocar</button></td></tr>';
+    });
+    h+='</tbody></table><p class="note">Estimación en 2D: las paredes tapan la vista y la altura no cuenta. Se prueban posiciones en esquinas y lados apuntando al centro; «Colocar» deja las cámaras en el plano para que las muevas. Los precios son de venta, sin IVA.</p></div>';
+  }else if(sugResult)h+='<p class="note">El plano o los ajustes cambiaron: calcula de nuevo.</p>';
+  return h;
+}
+
 /* ---------- Borrar ---------- */
 function segInter(a,b,c,d){
   var d1=(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x),d2=(b.x-a.x)*(d.y-a.y)-(b.y-a.y)*(d.x-a.x);
@@ -1034,6 +1159,7 @@ function levelsHTML(c){
   else h+='<p class="note">«Calculada»: distancia donde se alcanza cada nivel usando el ángulo horizontal del lente sobre un plano frente a la cámara (promedio del plano).</p>';
   h+=blindHTML(c);
   h+='<p class="note">Es una estimación teórica: la luz, el lente y la compresión cambian el resultado real.</p>';
+  h+=usoHTML(c);
   return h;
 }
 function modelOptions(sel){
@@ -1091,7 +1217,7 @@ function renderPanel(){
     var k=CAT(curModel);
     h='<p class="hint">Toca el plano para colocar una cámara; arrastra para orientarla. Toca una cámara existente para editarla.</p>'+
       '<div class="grid2"><label class="f wide"><span>Modelo a colocar</span><select id="c-model">'+modelOptions(curModel)+'</select></label>'+
-      (k.lenses.length?'<label class="f wide"><span>Lente</span><select id="c-lens">'+lensOptions(curModel,curLens)+'</select></label>':'')+'</div>';
+      (k.lenses.length?'<label class="f wide"><span>Lente</span><select id="c-lens">'+lensOptions(curModel,curLens)+'</select></label>':'')+'</div>'+usoHTML(makeCam(curModel,curLens,0,0,0));
   }
   if(tool==='erase'){
     h='<p class="hint">Toca una pared o línea para borrarla, o pasa el dedo (o el mouse) por varias. Con «Recuadro» arrastras un cuadro y se borra todo lo que toque. Cada gesto se deshace de una vez.</p>'+
@@ -1159,7 +1285,7 @@ panel.addEventListener('change',function(e){
   var id=e.target.id,c=sel&&sel.type==='cam'?camById(sel.id):null;
   if(id==='e-cams'){eraseCams=e.target.checked;return;}
   if(id==='c-model'){curModel=e.target.value;curLens=0;renderPanel();return;}
-  if(id==='c-lens'){curLens=parseInt(e.target.value,10)||0;return;}
+  if(id==='c-lens'){curLens=parseInt(e.target.value,10)||0;renderPanel();return;}
   if(c){
     if(id==='f-model'){pushHist();c.cat=e.target.value;var k=CAT(c.cat);c.px=k.px;c.ir=k.ir;applyLens(c,0);afterChange();renderPanel();return;}
     if(id==='f-lens'){pushHist();applyLens(c,parseInt(e.target.value,10)||0);afterChange();renderPanel();return;}
@@ -1276,6 +1402,7 @@ function precioCamHTML(k){
 function resumenTotalHTML(r){
   return '<p class="note"><b>Total cámaras: '+money(r.venta)+'</b>.'+(r.sin?' '+r.sin+' cámara(s) sin precio no se suman.':'')+' Precios sin IVA. Solo las cámaras: grabador, disco, fuentes, conectores y cable van aparte.</p>';
 }
+function ventaDe(k){return k.pr?k.pr.venta:null;}
 function camSummaryHTML(){
   var r=camSummary();
   if(!r.total)return '<p class="note">Aún no hay cámaras en el plano.</p>';
@@ -1314,6 +1441,7 @@ function openProject(){
    '<h3>Plano de fondo</h3><div class="row" style="margin-top:0"><button class="btn" id="p-img">Cargar imagen del plano</button>'+(state.bg?'<button class="btn" id="p-cal">Calibrar escala</button><button class="btn dng" id="p-rm">Quitar</button>':'')+'</div>'+
    (state.bg?'<label class="f" style="margin-top:8px"><span>Opacidad del plano</span><input id="p-op" type="range" min="0.1" max="1" step="0.05" value="'+state.bg.opacity+'"></label>':'')+
    '<p class="note">Carga una foto o captura del plano, calibra con una distancia conocida y traza las paredes encima.</p>'+
+   sugHTML()+
    '<h3>Cámaras del plano y precio</h3>'+camSummaryHTML()+'<div class="row" style="margin-top:0"><button class="btn" id="p-copy">Copiar lista</button></div>'+
    '<h3>Proyecto</h3><div class="row" style="margin-top:0"><button class="btn" id="p-exp">Exportar imagen</button><button class="btn dng" id="p-new">Nuevo plano</button></div>'+
    '<div class="row"><button class="btn" id="p-json-out">Guardar proyecto (.json)</button>'+(canShareFiles()?'<button class="btn" id="p-json-share">Compartir…</button>':'')+'<button class="btn" id="p-json-copy">Copiar como texto</button></div><div class="row"><button class="btn" id="p-json-in">Abrir proyecto (.json)</button><button class="btn" id="p-json-paste">Pegar proyecto</button></div>'+
@@ -1348,6 +1476,9 @@ mbody.addEventListener('click',function(e){
   if(t.id==='p-img')$('#file-bg').click();
   if(t.id==='p-cal'){closeModal();calibPts=[];setTool('calib');}
   if(t.id==='p-rm'){pushHist();state.bg=null;bgImg=null;bgSrc=null;openProject();afterChange();}
+  if(t.dataset.sugt!=null){sugTarget=parseInt(t.dataset.sugt,10);sugResult=null;openProject();return;}
+  if(t.id==='sug-go')runSuggest();
+  if(t.dataset.sugp!=null)placeSuggestion(parseInt(t.dataset.sugp,10));
   if(t.id==='p-new')newPlanAsk();
   if(t.id==='del-ok')doDeleteAll(t.dataset.kind);
   if(t.id==='del-cancel')closeModal();
@@ -1596,7 +1727,7 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
   else if(backupFailed)toast('Actualicé el formato de tu plano pero no pude dejar copia del original. Guarda ahora un archivo .json (botón Proyecto).',10000);
   else if(migratedV1)toast('Actualicé el formato de tu plano y dejé una copia del original. Guarda también un archivo .json (botón Proyecto) como respaldo.',9000);
   else if(lastDropped>0)toast('Se omitieron '+lastDropped+' elementos dañados al abrir el plano.',6000);
-  window.__cctv={get state(){return state;},histLen:function(){return hist.length;},camModel:camModel,cellLevel:cellLevel,sanitize:sanitizeState,viewRange:viewRange,targetH:targetH,bandsFor:bandsFor,levelDist:levelDist,view:view,setTool:setTool,fit:fit,coverageRaster:coverageRaster,setView:setView};
+  window.__cctv={get state(){return state;},suggest:suggest,planBox:planBox,usoHTML:usoHTML,histLen:function(){return hist.length;},camModel:camModel,cellLevel:cellLevel,sanitize:sanitizeState,viewRange:viewRange,targetH:targetH,bandsFor:bandsFor,levelDist:levelDist,view:view,setTool:setTool,fit:fit,coverageRaster:coverageRaster,setView:setView};
 })();
 })();
 </script>
