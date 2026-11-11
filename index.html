@@ -1,4 +1,16 @@
-<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>*{box-sizing:border-box}body{margin:0}</style><title>Plano CCTV</title></head><body>
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>*{box-sizing:border-box}body{margin:0}</style>
+<!--PWA-INI-->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#122238" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Plano CCTV">
+<!--PWA-FIN-->
+<title>Plano CCTV</title></head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
@@ -93,12 +105,36 @@ table.dori td{padding:5px 4px 5px 0;border-top:1px solid var(--line)}
 .modal img.prev{max-width:100%;border:1px solid var(--line);border-radius:8px;display:block}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(120px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:999px;font-size:13px;z-index:60;max-width:90%}
 .toast[hidden]{display:none}
-@media (min-width:760px){
-  body{flex-direction:row;flex-wrap:wrap}
-  .top{width:100%}
-  #stage{flex:1 1 60%}
-  .sheet{width:340px;max-height:none;border-top:0;border-left:1px solid var(--line)}
-  .dock{width:100%}
+/* Avisos arriba del plano (ejemplo e instalación) */
+.stack{position:absolute;left:12px;right:12px;top:10px;z-index:5;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.stack .banner{position:static;pointer-events:auto;flex-wrap:wrap}
+.banner span{min-width:200px}
+.pc-only{display:none}
+@media (hover:hover){
+  .btn:not(.pri):hover,.ib:not(:disabled):hover,.seg button:hover{background:color-mix(in srgb,var(--ink) 9%,var(--surface))}
+  .btn.pri:hover{filter:brightness(1.08)}
+  .dock button[aria-pressed="false"]:hover{background:color-mix(in srgb,var(--ink) 9%,var(--surface));color:var(--ink)}
+}
+@media (hover:hover) and (pointer:fine){.pc-only{display:block}}
+/* Escritorio: herramientas a la izquierda, plano al centro, panel a la derecha */
+@media (min-width:900px){
+  body{display:grid;grid-template-columns:88px minmax(0,1fr) 390px;grid-template-rows:auto minmax(0,1fr)}
+  .top{grid-column:1/-1;grid-row:1;padding-block:10px;gap:12px}
+  .top input.pname{flex:0 1 460px;font-size:15px}
+  .top #b-undo{margin-left:auto}
+  .dock{grid-column:1;grid-row:2;grid-template-columns:1fr;grid-auto-rows:72px;align-content:start;gap:6px;padding:12px 10px;border-top:0;border-right:1px solid var(--line)}
+  .dock button{min-height:0;height:72px;font-size:12px;gap:4px}
+  #stage{grid-column:2;grid-row:2;min-width:0;min-height:0}
+  .sheet{grid-column:3;grid-row:2;max-height:none;min-height:0;border-top:0;border-left:1px solid var(--line)}
+  .sheet-h{padding-block:10px}
+  .sheet-b{flex:1;min-height:0;padding-bottom:16px}
+  #sheet-toggle{display:none}
+  .sheet.min .sheet-b{display:block}
+  .modal{align-items:center}
+  .modal .card{border-radius:16px;max-height:88%;max-width:660px;padding:22px 26px}
+  .toast{bottom:28px}
+  .legend{bottom:44px;font-size:12px}
+  .banner{font-size:14px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -112,7 +148,10 @@ table.dori td{padding:5px 4px 5px 0;border-top:1px solid var(--line)}
 
 <div id="stage">
   <canvas id="cv"></canvas>
-  <div class="banner" id="banner" hidden><span>Plano de ejemplo para probar. Toca «Nuevo plano» para dibujar el tuyo.</span><button class="btn" id="b-new1">Nuevo plano</button></div>
+  <div class="stack" id="stack">
+    <div class="banner" id="banner" hidden><span>Plano de ejemplo para probar. Toca «Nuevo plano» para dibujar el tuyo.</span><button class="btn" id="b-new1">Nuevo plano</button></div>
+    <div class="banner" id="install" hidden><span id="install-t">Instala Plano CCTV en este equipo para abrirlo como una app, incluso sin internet.</span><button class="btn pri" id="install-go">Instalar</button><button class="btn" id="install-no">Ahora no</button></div>
+  </div>
   <div class="legend" id="legend"></div>
   <div class="zoombtns">
     <button class="ib" id="b-view" aria-label="Cambiar vista de cobertura" title="Vista de cobertura"><svg viewBox="0 0 20 20"><path d="M10 3l7 4-7 4-7-4z"/><path d="M3 10.5l7 4 7-4"/><path d="M3 14l7 4 7-4"/></svg></button>
@@ -128,11 +167,11 @@ table.dori td{padding:5px 4px 5px 0;border-top:1px solid var(--line)}
 </section>
 
 <nav class="dock gut" aria-label="Herramientas">
-  <button data-tool="select" aria-pressed="true"><svg viewBox="0 0 20 20"><path d="M5 3l11 7-5 1.6L8.6 17z"/></svg>Mover</button>
-  <button data-tool="wall" aria-pressed="false"><svg viewBox="0 0 20 20"><path d="M3.5 16.5l13-13"/><circle cx="3.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="3.5" r="1.6"/></svg>Pared</button>
-  <button data-tool="cam" aria-pressed="false"><svg viewBox="0 0 20 20"><rect x="2.5" y="6.5" width="10" height="7" rx="1.5"/><path d="M12.5 9.2l5-2.2v6l-5-2.2z"/></svg>Cámara</button>
-  <button data-tool="measure" aria-pressed="false"><svg viewBox="0 0 20 20"><path d="M3 13L13 3l4 4L7 17z"/><path d="M6 10l2 2M9 7l2 2M12 4l1.6 1.6"/></svg>Medir</button>
-  <button id="b-proj" aria-pressed="false"><svg viewBox="0 0 20 20"><path d="M3 6h14M3 10h14M3 14h14"/><circle cx="7" cy="6" r="1.7"/><circle cx="13" cy="10" r="1.7"/><circle cx="8" cy="14" r="1.7"/></svg>Proyecto</button>
+  <button data-tool="select" aria-pressed="true" title="Mover (V)"><svg viewBox="0 0 20 20"><path d="M5 3l11 7-5 1.6L8.6 17z"/></svg>Mover</button>
+  <button data-tool="wall" aria-pressed="false" title="Pared (W)"><svg viewBox="0 0 20 20"><path d="M3.5 16.5l13-13"/><circle cx="3.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="3.5" r="1.6"/></svg>Pared</button>
+  <button data-tool="cam" aria-pressed="false" title="Cámara (C)"><svg viewBox="0 0 20 20"><rect x="2.5" y="6.5" width="10" height="7" rx="1.5"/><path d="M12.5 9.2l5-2.2v6l-5-2.2z"/></svg>Cámara</button>
+  <button data-tool="measure" aria-pressed="false" title="Medir (M)"><svg viewBox="0 0 20 20"><path d="M3 13L13 3l4 4L7 17z"/><path d="M6 10l2 2M9 7l2 2M12 4l1.6 1.6"/></svg>Medir</button>
+  <button id="b-proj" aria-pressed="false" title="Proyecto (P)"><svg viewBox="0 0 20 20"><path d="M3 6h14M3 10h14M3 14h14"/><circle cx="7" cy="6" r="1.7"/><circle cx="13" cy="10" r="1.7"/><circle cx="8" cy="14" r="1.7"/></svg>Proyecto</button>
 </nav>
 
 <div class="modal" id="modal" hidden>
@@ -206,7 +245,7 @@ var seq=1, uid=function(){return 'i'+(seq++)+Math.random().toString(36).slice(2,
 var state, bgSrc=null, bgImg=null, hist=[], saveT=0;
 var tool='select', sel=null, curModel='dh-hfw1500', curLens=0;
 var pointers=new Map(), action=null, pinch=null, measureLine=null, calibPts=[], lastDir=-90;
-var view={s:40,ox:0,oy:0}, W=0, H=0, DPR=1, raf=0, fitted=false;
+var viewTouched=false, view={s:40,ox:0,oy:0}, W=0, H=0, DPR=1, raf=0, fitted=false;
 
 function exampleState(){
   var s={name:'Ejemplo: sala de 8 x 5 m',example:true,camSeq:0,
@@ -467,13 +506,13 @@ function viewMode(){return state.settings.view||'cam';}
 function rasterKey(fast){
   return JSON.stringify([state.walls.map(function(w){return [w.a.x,w.a.y,w.b.x,w.b.y];}),
     state.cams.map(function(c){return [c.x,c.y,c.dir,c.hfov,c.px,c.ir,c.h,c.tilt,c.vfov];}),
-    state.settings.targetH,state.settings.recMode,state.settings.recPx,state.settings.night,state.settings.bands,viewMode(),fast]);
+    state.settings.targetH,state.settings.recMode,state.settings.recPx,state.settings.night,state.settings.bands,viewMode(),fast,W>=900]);
 }
 function coverageRaster(fast){
   var key=rasterKey(fast);
   if(rasterCache.key===key)return rasterCache.r;
   var nb=nBands(),b=contentBounds(true),mg=0.5,x0=b.x0-mg,y0=b.y0-mg,bw=b.x1-b.x0+2*mg,bh=b.y1-b.y0+2*mg;
-  var cell=Math.max(0.05,Math.max(bw,bh)/(fast?150:420));
+  var cell=Math.max(0.05,Math.max(bw,bh)/(fast?150:(W>=900?640:420)));
   var nx=Math.max(1,Math.ceil(bw/cell)),ny=Math.max(1,Math.ceil(bh/cell));
   var models=state.cams.map(function(c){return camModel(c,nb);});
   var mode=viewMode(),perCam=(mode==='cam');
@@ -558,6 +597,7 @@ function drawScene(c,v,th,o){
   if(state.cams.length){
     var rs=coverageRaster(!!(o.ui&&action&&(action.type==='move'||action.type==='rot')));
     var rw=rs.nx*rs.cell*v.s,rh=rs.ny*rs.cell*v.s;
+    c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
     if(vm==='cam'){
       c.globalAlpha=.42;
       for(j=0;j<rs.layers.length;j++)c.drawImage(rs.layers[j],X(rs.x0),Y(rs.y0),rw,rh);
@@ -705,7 +745,8 @@ function fit(){
   if(!W||!H)return;
   /* Márgenes que dejan libres los botones de zoom (derecha) y la leyenda y escala (abajo). */
   var b=contentBounds(false),bw=Math.max(b.x1-b.x0,1),bh=Math.max(b.y1-b.y0,1);
-  var ML=36,MR=72,MT=36,MB=96,aw=Math.max(W-ML-MR,50),ah=Math.max(H-MT-MB,50);
+  var stk=$('#stack'),avisos=stk?stk.offsetHeight:0;
+  var ML=36,MR=72,MT=36+(avisos?avisos+10:0),MB=96,aw=Math.max(W-ML-MR,50),ah=Math.max(H-MT-MB,50);
   var s=Math.min(aw/bw,ah/bh);
   view.s=clamp(s,6,200);
   view.ox=ML+(aw-bw*view.s)/2-b.x0*view.s;
@@ -774,7 +815,7 @@ cv.addEventListener('pointercancel',endPointer);
 cv.addEventListener('wheel',function(e){
   e.preventDefault();
   var p=pos(e),f=Math.exp(-e.deltaY*0.0015),ns=clamp(view.s*f,4,400),wp=s2w(p.x,p.y);
-  view.s=ns;view.ox=p.x-wp.x*ns;view.oy=p.y-wp.y*ns;redraw();
+  viewTouched=true;view.s=ns;view.ox=p.x-wp.x*ns;view.oy=p.y-wp.y*ns;redraw();
 },{passive:false});
 
 function startPinch(){
@@ -785,7 +826,7 @@ function startPinch(){
 function movePinch(){
   var a=Array.from(pointers.values()),d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1;
   var mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},ns=clamp(pinch.v0.s*d/pinch.d0,4,400);
-  view.s=ns;view.ox=mid.x-pinch.wp.x*ns;view.oy=mid.y-pinch.wp.y*ns;redraw();
+  viewTouched=true;view.s=ns;view.ox=mid.x-pinch.wp.x*ns;view.oy=mid.y-pinch.wp.y*ns;redraw();
 }
 
 function begin(p,e){
@@ -823,7 +864,7 @@ function move(p){
   var wp=s2w(p.x,p.y);
   switch(action.type){
     case 'pan':
-      if(Math.hypot(p.x-action.sx,p.y-action.sy)>3)action.moved=true;
+      if(Math.hypot(p.x-action.sx,p.y-action.sy)>3){action.moved=true;viewTouched=true;}
       view.ox=action.ox+(p.x-action.sx);view.oy=action.oy+(p.y-action.sy);redraw();break;
     case 'move':
       if(!dragged(action,p))break;commitPre(action);action.moved=true;action.cam.x=Math.round((wp.x+action.dx)*100)/100;action.cam.y=Math.round((wp.y+action.dy)*100)/100;redraw();break;
@@ -853,9 +894,9 @@ function finish(p,cancelled){
       if(!a.moved&&sel){selectItem(null);}
       break;
     case 'tap':break;
-    case 'move':afterChange();break;
-    case 'rot':afterChange();break;
-    case 'end':afterChange();renderPanel();break;
+    case 'move':if(a.committed)afterChange();break;
+    case 'rot':if(a.committed)afterChange();break;
+    case 'end':if(a.committed)afterChange();renderPanel();break;
     case 'place':
       pushHist();
       var dir=a.dir!=null?a.dir:lastDir;lastDir=dir;
@@ -947,7 +988,8 @@ function renderPanel(){
   var titles={select:'Mover y editar',wall:'Dibujar paredes',cam:'Colocar cámaras',measure:'Medir',calib:'Calibrar plano de fondo'};
   sheetT.textContent=titles[tool]||'Herramienta';
   if(tool==='select'&&!sel){
-    h='<p class="hint">Toca una cámara o una pared para editarla. Arrastra en un espacio vacío para mover el plano; pellizca con dos dedos para acercar.</p>';
+    h='<p class="hint">Toca una cámara o una pared para editarla. Arrastra en un espacio vacío para mover el plano; pellizca con dos dedos para acercar.</p>'+
+      '<p class="hint pc-only">En PC: la rueda del mouse acerca y aleja, arrastrar mueve, y las teclas V, W, C, M y P cambian de herramienta. Ctrl+Z deshace y Esc cierra o suelta la selección.</p>';
   }
   if(tool==='wall'){
     h='<p class="hint">Arrastra para trazar. Cada trazo se engancha al extremo del anterior. Si escribes un largo fijo, el trazo toma esa medida y tú solo eliges la dirección.</p>'+
@@ -1059,6 +1101,7 @@ panel.addEventListener('click',function(e){
 /* ---------- Herramientas y panel plegable ---------- */
 function setTool(t){
   tool=t;action=null;
+  cv.style.cursor=(t==='select')?'default':'crosshair';
   if(t!=='measure')measureLine=null;
   if(t!=='calib')calibPts=[];
   document.querySelectorAll('.dock [data-tool]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.tool===t?'true':'false');});
@@ -1073,18 +1116,29 @@ $('#sheet-toggle').addEventListener('click',function(){
 $('#b-undo').addEventListener('click',undo);
 $('#b-zin').addEventListener('click',function(){zoomAt(1.3);});
 $('#b-zout').addEventListener('click',function(){zoomAt(1/1.3);});
-$('#b-fit').addEventListener('click',fit);
+$('#b-fit').addEventListener('click',function(){viewTouched=false;fit();});
 $('#b-view').addEventListener('click',function(){
   var cur=viewMode(),i=0;
   for(var k=0;k<VMODES.length;k++)if(VMODES[k][0]===cur)i=k;
   var nx=VMODES[(i+1)%VMODES.length];setView(nx[0]);toast('Vista: '+nx[1]);
 });
-function zoomAt(f){var ns=clamp(view.s*f,4,400),cx=W/2,cy=H/2,wp=s2w(cx,cy);view.s=ns;view.ox=cx-wp.x*ns;view.oy=cy-wp.y*ns;redraw();}
+function zoomAt(f){viewTouched=true;var ns=clamp(view.s*f,4,400),cx=W/2,cy=H/2,wp=s2w(cx,cy);view.s=ns;view.ox=cx-wp.x*ns;view.oy=cy-wp.y*ns;redraw();}
 $('#pname').addEventListener('input',function(){state.name=this.value;markEdited();save();});
 document.addEventListener('keydown',function(e){
   var tg=(e.target.tagName||'').toLowerCase();
-  if(tg==='input'||tg==='select')return;
+  if(tg==='input'||tg==='select'||tg==='textarea')return;
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    var k=(e.key||'').toLowerCase();
+    if(k==='escape'){if(!modal.hidden)closeModal();else if(tool==='calib'){calibPts=[];setTool('select');}else if(sel)selectItem(null);return;}
+    if(!modal.hidden)return;
+    var tm={v:'select',w:'wall',c:'cam',m:'measure'};
+    if(tm[k]){setTool(tm[k]);return;}
+    if(k==='p'){openProject();return;}
+    if(k==='+'||k==='='){zoomAt(1.3);return;}
+    if(k==='-'){zoomAt(1/1.3);return;}
+    if(k==='f'){fit();return;}
+  }
   if((e.key==='Delete'||e.key==='Backspace')&&sel){
     pushHist();
     if(sel.type==='cam')state.cams=state.cams.filter(function(x){return x.id!==sel.id;});else state.walls=state.walls.filter(function(x){return x.id!==sel.id;});
@@ -1394,6 +1448,32 @@ if(window.ResizeObserver)new ResizeObserver(resize).observe($('#stage'));
 window.addEventListener('resize',resize);
 if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
 new MutationObserver(redraw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/*PWA-INI*/
+/* Instalación como app: aviso con botón «Instalar» (Chrome, Edge, Android), instrucciones en iPhone y service worker para abrir sin internet. */
+var deferredInstall=null,INSTALL_KEY=KEY+'-instalar-no';
+function isStandalone(){return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;}
+function installDismissed(){try{return Date.now()-parseInt(localStorage.getItem(INSTALL_KEY)||'0',10)<7*864e5;}catch(e){return false;}}
+function showInstall(msg,withBtn){var b=$('#install');if(!b)return;$('#install-t').textContent=msg;$('#install-go').hidden=!withBtn;b.hidden=false;if(!viewTouched)fit();}
+function hideInstall(){var b=$('#install');if(b){b.hidden=true;if(!viewTouched)fit();}}
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();deferredInstall=e;
+  if(!installDismissed()&&!isStandalone())showInstall('Instala Plano CCTV en este equipo para abrirlo como una app, incluso sin internet.',true);
+});
+window.addEventListener('appinstalled',function(){deferredInstall=null;hideInstall();toast('Plano CCTV instalado.',4000);});
+$('#install-go').addEventListener('click',function(){
+  if(!deferredInstall)return;
+  var ev=deferredInstall;deferredInstall=null;hideInstall();
+  try{ev.prompt();}catch(e){}
+});
+$('#install-no').addEventListener('click',function(){hideInstall();try{localStorage.setItem(INSTALL_KEY,String(Date.now()));}catch(e){}});
+if(/iphone|ipad|ipod/i.test(navigator.userAgent||'')&&!isStandalone()&&!installDismissed()){
+  showInstall('Para instalarla en este equipo: toca Compartir y luego «Agregar a pantalla de inicio».',false);
+}
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  window.addEventListener('load',function(){try{navigator.serviceWorker.register('./sw.js').catch(function(){});}catch(e){}});
+}
+/*PWA-FIN*/
 
 (function boot(){
   var saved=null;try{saved=load();}catch(e){loadDamaged=true;}
