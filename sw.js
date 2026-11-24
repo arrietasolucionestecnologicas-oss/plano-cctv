@@ -3,7 +3,7 @@
    - Al abrir la página con internet siempre trae la versión nueva (y la guarda); sin internet usa la guardada.
    - Lo que viene de otros sitios (las fuentes de Google) no se toca: sin internet la app usa la fuente del sistema.
    Los planos del usuario NO están aquí: viven en el almacenamiento del navegador. Para publicar un cambio, subir la versión de CACHE. */
-var CACHE = 'plano-cctv-v2';
+var CACHE = 'plano-cctv-v3';
 var ARCHIVOS = [
   './',
   './index.html',
