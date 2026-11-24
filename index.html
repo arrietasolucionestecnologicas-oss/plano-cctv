@@ -128,7 +128,7 @@ table.dori td{padding:5px 4px 5px 0;border-top:1px solid var(--line)}
 .prg{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:8px 0}.prg>i{display:block;height:100%;width:0;background:var(--accent)}
 details.dd{margin-top:6px}details.dd summary{cursor:pointer;font-size:13px;color:var(--muted);padding:6px 0}
 .banner span{min-width:200px}
-@media (max-width:899px){body.con-sel .stack,body.con-sel .legend,body.herr .stack,body.herr .legend{display:none}}
+@media (max-width:899px){body.con-sel .stack,body.herr .stack{display:none}body.con-sel .legend b,body.herr .legend b{display:none}body.con-sel .legend,body.herr .legend{padding:4px 8px;font-size:11px;gap:2px 9px}}
 .stack .banner{padding:6px 8px;gap:6px 8px;font-size:12.5px}.stack .banner span{min-width:120px}.stack .banner .btn{min-height:36px;padding:6px 10px}
 .pc-only{display:none}
 @media (max-width:480px){.brand{display:none}}
@@ -2308,7 +2308,8 @@ function contentBounds(extra){
 function fit(){
   if(!W||!H)return;
   /* Márgenes que dejan libres los botones de zoom (derecha) y la leyenda y escala (abajo). */
-  var b=contentBounds(false),bw=Math.max(b.x1-b.x0,1),bh=Math.max(b.y1-b.y0,1);
+  /* Sin paredes ni zonas (solo cámaras sueltas) se encuadra también el cono, para que se vean todas las zonas de color. */
+  var b=contentBounds(!state.walls.length&&!state.zones.length&&!state.obst.length&&!state.bg&&state.cams.length>0),bw=Math.max(b.x1-b.x0,1),bh=Math.max(b.y1-b.y0,1);
   var stk=$('#stack'),avisos=stk?stk.offsetHeight:0;
   var lg=$('#legend'),lgH=(lg&&lg.offsetHeight)?lg.offsetHeight+(parseFloat(getComputedStyle(lg).bottom)||52)+10:0;
   var ML=36,MR=72,MT=36+(avisos?avisos+10:0),MB=Math.max(96,lgH),aw=Math.max(W-ML-MR,50),ah=Math.max(H-MT-MB,50);
